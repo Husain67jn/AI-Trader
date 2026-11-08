@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Trading Institution</title>
+<style>
+  :root {
+    --bg: #0b0f14; --panel: #121821; --panel-2: #18202b; --border: #263243;
+    --text: #e6edf5; --muted: #8ea0b5; --accent: #4cc9a4; --warn: #e3b341;
+    --danger: #f06a6a; --blue: #6cb6ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { padding: 14px; max-width: 1180px; margin: 0 auto; }
+  h1 { font-size: 18px; margin: 0; letter-spacing: .2px; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  .muted { color: var(--muted); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .between { justify-content: space-between; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; margin-bottom: 12px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .stat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; }
+  .stat .k { color: var(--muted); font-size: 12px; text-transform: uppercase;
+    letter-spacing: .6px; }
+  .stat .v { font-size: 18px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px;
+    font-weight: 600; border: 1px solid var(--border); }
+  .ok, .HEALTHY, .DEMO_ARMED, .FILLED { color: var(--accent); border-color: var(--accent); }
+  .warn, .DEGRADED, .PAUSED, .PARTIALLY_FILLED, .CLOSED, .ACCUMULATED
+    { color: var(--warn); border-color: var(--warn); }
+  .bad, .STALE, .EMERGENCY_STOP, .UNKNOWN, .REJECTED, .BLOCKED,
+  .LIVE, .INSECURE_LAN { color: var(--danger); border-color: var(--danger); }
+  button { background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 9px; padding: 9px 13px; font: inherit; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: #143a30; border-color: var(--accent); color: var(--accent); }
+  button.danger { background: #3a1717; border-color: var(--danger); color: var(--danger); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  input, textarea { width: 100%; background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 9px; padding: 10px; font: inherit; }
+  textarea { min-height: 120px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin: 12px 0; }
+  .tabs button { white-space: nowrap; padding: 7px 11px; font-size: 13px; }
+  .tabs button.active { border-color: var(--accent); color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--border);
+    vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase;
+    letter-spacing: .5px; }
+  td.num { font-variant-numeric: tabular-nums; }
+  pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; margin: 0; }
+  .hide { display: none !important; }
+  .alert { border-radius: 12px; padding: 12px 14px; margin-top: 12px; line-height: 1.5;
+    border: 1px solid var(--warn); background: #241f0e; color: var(--warn); }
+  .alert.bad { border-color: var(--danger); background: #251414; color: var(--danger); }
+  .alert.good { border-color: var(--accent); background: #10231d; color: var(--accent); }
+  .alert .muted { color: inherit; opacity: .85; }
+  #login { max-width: 380px; margin: 15vh auto 0; }
+  .big { font-size: 26px; font-variant-numeric: tabular-nums; }
+  .pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .report { border-top: 1px solid var(--border); padding-top: 9px; margin-top: 9px; }
+  .report:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
+  .list { margin: 0; padding-left: 18px; }
+  .list li { margin: 3px 0; }
+  @media (max-width: 560px) { body { padding: 10px; } .card { padding: 12px; } }
+</style>
+</head>
+<body>
+<div id="login" class="card hide">
+  <h1>AI Trading Institution</h1>
+  <p class="muted">Local demo-only research and execution monitor. Password is configured on the laptop.</p>
+  <form id="login-form">
+    <input id="password" type="password" autocomplete="current-password" placeholder="Owner password" required>
+    <div style="height:10px"></div>
+    <button class="primary" type="submit" style="width:100%">Sign in</button>
+  </form>
+  <p id="login-error" class="badge bad hide" style="margin-top:10px"></p>
+</div>
+
+<div id="app" class="hide">
+  <div class="row between">
+    <h1>AI Trading Institution</h1>
+    <div class="row">
+      <span id="provider" class="muted"></span>
+      <button id="logout" type="button">Sign out</button>
+    </div>
+  </div>
+
+  <div id="broker-alert" class="alert hide" role="status"></div>
+  <div id="transport-alert" class="alert hide" role="status"></div>
+
+  <div class="card" style="margin-top:12px">
+    <div class="row between">
+      <div class="row">
+        <span id="state" class="badge">—</span>
+        <span id="health" class="badge">—</span>
+        <span id="broker-kind" class="badge">—</span>
+        <span id="demo" class="badge">DEMO ONLY</span>
+        <span id="broker" class="muted"></span>
+      </div>
+      <span id="clock" class="muted"></span>
+    </div>
+    <div class="grid" style="margin-top:12px">
+      <div class="stat"><div class="k">Equity</div><div class="v" id="equity">—</div></div>
+      <div class="stat"><div class="k">Free margin</div><div class="v" id="margin">—</div></div>
+      <div class="stat"><div class="k">Open positions</div><div class="v" id="poscount">—</div></div>
+      <div class="stat"><div class="k">Latest decision</div><div class="v" id="decision">—</div></div>
+    </div>
+    <div class="pill-row">
+      <button data-kill="pause" type="button">Pause</button>
+      <button data-kill="estop" class="danger" type="button">Emergency stop</button>
+      <button data-kill="arm" class="primary" type="button">Arm demo trading</button>
+      <button id="refresh" type="button">Refresh</button>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button data-tab="command" class="active">Command</button>
+    <button data-tab="desk">Desk</button>
+    <button data-tab="ai">AI</button>
+    <button data-tab="calendar">Calendar</button>
+    <button data-tab="news">News</button>
+    <button data-tab="risk">Risk</button>
+    <button data-tab="learning">Learning</button>
+    <button data-tab="performance">Performance</button>
+    <button data-tab="audit">Audit</button>
+    <button data-tab="settings">Settings</button>
+  </div>
+
+  <section data-panel="command" class="card">
+    <h2>Command Center</h2>
+    <div id="command-body"></div>
+  </section>
+  <section data-panel="desk" class="card hide">
+    <h2>Trading Desk</h2>
+    <div id="quotes"></div>
+    <div style="height:12px"></div>
+    <div id="positions"></div>
+  </section>
+  <section data-panel="ai" class="card hide">
+    <h2>Departments & Proposals</h2>
+    <div id="proposals"></div>
+    <div style="height:12px"></div>
+    <div id="reports"></div>
+  </section>
+  <section data-panel="calendar" class="card hide">
+    <h2>Economic Calendar</h2>
+    <div id="calendar-body"></div>
+    <div style="height:10px"></div>
+    <button id="refresh-calendar" type="button">Refresh from feed</button>
+  </section>
+  <section data-panel="news" class="card hide">
+    <h2>News &amp; Headlines</h2>
+    <div id="news-body"></div>
+    <div style="height:10px"></div>
+    <button id="refresh-news" type="button">Fetch headlines</button>
+  </section>
+  <section data-panel="risk" class="card hide">
+    <h2>Risk Center</h2>
+    <div id="risk-body"></div>
+  </section>
+  <section data-panel="learning" class="card hide">
+    <h2>Learning Lab</h2>
+    <div id="learning-body"></div>
+  </section>
+  <section data-panel="performance" class="card hide">
+    <h2>Performance</h2>
+    <div id="performance-body"></div>
+  </section>
+  <section data-panel="audit" class="card hide">
+    <h2>Audit Log</h2>
+    <div id="audit-body"></div>
+  </section>
+  <section data-panel="settings" class="card hide">
+    <h2>Owner Settings</h2>
+    <p class="muted">Risk limits are code-defaulted and only change through this authenticated, logged form.</p>
+    <textarea id="limits"></textarea>
+    <div style="height:10px"></div>
+    <input id="settings-confirm" placeholder='Type "I UNDERSTAND" to save'>
+    <div style="height:10px"></div>
+    <button id="save-limits" class="primary" type="button">Save risk limits</button>
+    <div style="height:16px"></div>
+    <button id="reconcile" type="button">Reconcile with broker</button>
+    <button id="audit-trades" type="button">Review closed trades</button>
+    <button id="run-research" type="button">Run research now</button>
+    <div style="height:16px"></div>
+    <h2>Owner password</h2>
+    <p class="muted">Requires the current password. Every other session is signed out
+      immediately; this one is re-issued.</p>
+    <input id="pw-current" type="password" autocomplete="current-password" placeholder="Current password">
+    <div style="height:8px"></div>
+    <input id="pw-new" type="password" autocomplete="new-password" placeholder="New password (12+ characters)">
+    <div style="height:8px"></div>
+    <button id="rotate-password" type="button">Rotate password</button>
+  </section>
+</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const fmt = (v) => v === null || v === undefined ? "—" : String(v);
+const money = (v) => v === null || v === undefined ? "—" :
+  (typeof v === "string" && v.match(/^-?\d+(\.\d+)?$/) ? Number(v).toLocaleString(undefined, {maximumFractionDigits: 2}) : fmt(v));
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cls = (v) => String(v ?? "").replace(/[^A-Za-z_]/g, "");
+// Orders whose outcome is not settled. "Unverified" is the one that matters: those were
+// reported absent by a lookup that could not rule out an execution, so they are shown
+// loudly instead of looking like a clean desk.
+const orderCell = (list, empty) => (list && list.length)
+  ? `<span class="badge bad">${list.length}: ${esc(list.join(", "))}</span>`
+  : `<span class="muted">${empty}</span>`;
+let csrf = sessionStorage.getItem("ati_csrf") || "";
+let timer = null;
+
+async function api(path, options = {}) {
+  const opts = {credentials: "same-origin", headers: {}, ...options};
+  if (opts.body) opts.headers["Content-Type"] = "application/json";
+  if (opts.method && opts.method !== "GET" && csrf) opts.headers["X-CSRF-Token"] = csrf;
+  const res = await fetch(path, opts);
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = {detail: res.statusText}; }
+  if (res.status === 401) { showLogin(); throw new Error("unauthorised"); }
+  if (!res.ok) throw new Error(data.detail || "request failed");
+  return data;
+}
+
+function showLogin() {
+  $("app").classList.add("hide");
+  $("login").classList.remove("hide");
+  if (timer) clearInterval(timer);
+}
+
+async function boot() {
+  try {
+    const session = await api("/api/session");
+    csrf = session.csrf;
+    sessionStorage.setItem("ati_csrf", csrf);
+    $("login").classList.add("hide");
+    $("app").classList.remove("hide");
+    await load();
+    timer = setInterval(load, 30000);
+  } catch (e) { showLogin(); }
+}
+
+async function load() {
+  try {
+    const d = await api("/api/overview");
+    render(d);
+  } catch (e) { /* shown by api() */ }
+}
+
+function render(d) {
+  $("state").textContent = d.system_state;
+  $("state").className = "badge " + cls(d.system_state);
+  $("health").textContent = "DATA " + d.data_health;
+  $("health").className = "badge " + cls(d.data_health);
+  const bs = d.broker_status || {};
+  const err = bs.error || {};
+  $("broker-kind").textContent = bs.real_mt5 ? "REAL MT5" : "SIMULATED";
+  $("broker-kind").className = "badge " + (bs.real_mt5 ? "ok" : "warn");
+  $("broker").textContent = (bs.label || d.app.broker) + " / " + d.app.provider;
+  const alert = $("broker-alert");
+  if (bs.real_mt5) {
+    alert.className = "alert good";
+    alert.innerHTML = `<strong>REAL MT5 session connected</strong> — ${esc(bs.label)}.
+      Orders still require the kill switch to be ARMED and every risk gate to pass.`;
+  } else {
+    alert.className = "alert bad";
+    alert.innerHTML = `<strong>REAL MT5 UNAVAILABLE</strong> — ${esc(bs.label)}.
+      Nothing on this screen is a real trade: quotes, positions and trades are simulated.<br>
+      <span class="muted">${err.code !== null && err.code !== undefined ? "Error " + esc(err.code) + ": " : ""}${esc(err.message || "no MT5 session")}</span>
+      ${err.hint ? `<br><span class="muted">Fix: ${esc(err.hint)}</span>` : ""}
+      <br><span class="muted">Handshake timeout: ${esc(bs.timeout_ms)} ms (TRADER_MT5_INIT_TIMEOUT_MS).</span>`;
+  }
+  alert.classList.remove("hide");
+  const ts = d.transport_security || {};
+  const transport = $("transport-alert");
+  if (ts.state === "INSECURE_LAN") {
+    transport.className = "alert bad";
+    transport.innerHTML = `<strong>PLAIN HTTP ON THE LAN</strong> — ${esc(ts.reason)}.
+      <br><span class="muted">${esc(ts.recommendation || "")}</span>`;
+    transport.classList.remove("hide");
+  } else {
+    transport.classList.add("hide");
+  }
+  $("provider").textContent = d.app.demo_only ? "DEMO ONLY" : "";
+  $("clock").textContent = new Date(d.server_time_utc).toLocaleString();
+  $("equity").textContent = d.account ? money(d.account.equity) + " " + d.account.currency : "—";
+  $("margin").textContent = d.account ? money(d.account.margin_free) : "—";
+  $("poscount").textContent = d.positions.length;
+  const latest = d.proposals[0];
+  $("decision").textContent = latest ? latest.decision : "—";
+
+  $("command-body").innerHTML = `
+    <table><tbody>
+      <tr><th>Mode</th><td>${esc(d.system_state)} — DEMO_ONLY hard-coded</td></tr>
+      <tr><th>Broker</th><td>${esc(bs.label)} — ${bs.real_mt5 ? "REAL MT5 available" : "REAL MT5 UNAVAILABLE"}</td></tr>
+      <tr><th>MT5 / broker</th><td>${esc(d.app.broker)} — account ${d.account ? esc(d.account.trade_mode) : "unknown"}${bs.simulated ? " (simulated)" : ""}</td></tr>
+      ${bs.simulated && err.message ? `<tr><th>Connection error</th><td>${err.code !== null && err.code !== undefined ? esc(err.code) + " — " : ""}${esc(err.message)}${err.hint ? `<br><span class="muted">${esc(err.hint)}</span>` : ""}</td></tr>` : ""}
+      <tr><th>Data health</th><td>${esc(d.data_health)}${
+        d.data_health_detail && d.data_health_detail.reason ? `<br><span class="muted">${esc(d.data_health_detail.reason)}</span>` : ""}${
+        d.data_health_detail && d.data_health_detail.oldest_tick_age_s !== undefined ? `<br><span class="muted">oldest probed tick: ${esc(d.data_health_detail.oldest_tick_age_s)} s old, session open: ${esc(d.data_health_detail.session_open)}</span>` : ""}</td></tr>
+      <tr><th>Symbols</th><td>${Object.entries(d.symbol_resolution || {}).map(([b, s]) => `${esc(b)} → ${esc(s)}`).join(" · ") || "<span class=\"muted\">none resolved</span>"}</td></tr>
+      <tr><th>Kill switch</th><td>${esc(d.kill_switch)}</td></tr>
+      <tr><th>Unresolved orders</th><td>${orderCell(d.unresolved_orders, "none — nothing waiting on the broker")}</td></tr>
+      <tr><th>Unverified orders</th><td>${orderCell(d.unverified_orders, "none — every order's outcome is verified")}${
+        (d.unverified_orders || []).length ? `<br><span class="muted">Reported absent by a lookup that could not rule out an execution: check the broker terminal before trusting the ledger.</span>` : ""}</td></tr>
+      <tr><th>Last update</th><td>${esc(d.server_time_utc)}</td></tr>
+      <tr><th>Strategy</th><td>${esc(latest ? latest.strategy_version : "—")}</td></tr>
+    </tbody></table>`;
+
+  const simNote = bs.simulated
+    ? `<p class="badge warn" style="display:inline-block;margin-bottom:8px">SIMULATED — not market data and not real trades</p>`
+    : "";
+  const q = Object.entries(d.quotes);
+  $("quotes").innerHTML = simNote + (q.length ? `<table><thead><tr><th>Symbol</th><th>Bid</th><th>Ask</th><th>UTC</th></tr></thead><tbody>` +
+    q.map(([s, v]) => `<tr><td>${esc(s)}</td><td class="num">${esc(v.bid)}</td><td class="num">${esc(v.ask)}</td><td>${esc(v.ts_utc)}</td></tr>`).join("") +
+    `</tbody></table>` : `<p class="muted">No quotes.</p>`);
+
+  $("positions").innerHTML = simNote + (d.positions.length ? `<table><thead><tr><th>Ticket</th><th>Symbol</th><th>Side</th><th>Vol</th><th>P/L</th><th>SL</th><th>TP</th></tr></thead><tbody>` +
+    d.positions.map(p => `<tr><td>${p.ticket}</td><td>${esc(p.symbol)}</td><td>${esc(p.direction)}</td><td class="num">${esc(p.volume)}</td><td class="num">${money(p.profit)}</td><td class="num">${esc(p.sl)}</td><td class="num">${esc(p.tp)}</td></tr>`).join("") +
+    `</tbody></table>` : `<p class="muted">No open positions.</p>`);
+
+  $("proposals").innerHTML = d.proposals.length ? d.proposals.map(p => `
+    <div class="report"><div class="row between">
+      <strong>${esc(p.symbol)} ${esc(p.direction)} — ${esc(p.decision)}</strong>
+      <span class="badge ${cls(p.decision)}">${esc(p.status || p.outcome || "")}</span>
+    </div>
+    <div class="muted">${esc(p.created_at_utc)} · confidence ${esc(p.confidence)} · regime ${esc(p.market_regime)}</div>
+    <div>SL ${esc(p.stop_loss)} · TP ${esc(p.take_profit)} · R:R ${esc(p.risk_reward)}</div>
+    ${(p.supporting_evidence || []).slice(0, 3).map(x => `<div class="muted">+ ${esc(x)}</div>`).join("")}
+    ${(p.contradicting_evidence || []).slice(0, 3).map(x => `<div class="muted">− ${esc(x)}</div>`).join("")}
+    </div>`).join("") : `<p class="muted">No proposals recorded.</p>`;
+
+  $("reports").innerHTML = d.reports.length ? d.reports.map(r => `
+    <div class="report"><div class="row between"><strong>${esc(r.department)}</strong>
+      <span class="badge ${cls(r.data_quality)}">${esc(r.data_quality)}</span></div>
+    <div class="muted">${esc(r.as_of_utc)} · ${esc(r.recommendation)}</div>
+    ${(r.facts || []).slice(0, 3).map(x => `<div>• ${esc(x)}</div>`).join("")}
+    ${(r.uncertainties || []).slice(0, 2).map(x => `<div class="muted">? ${esc(x)}</div>`).join("")}
+    </div>`).join("") : `<p class="muted">No department reports yet.</p>`;
+
+  $("calendar-body").innerHTML = d.calendar.length ? `<table><thead><tr><th>UTC</th><th>Cur</th><th>Event</th><th>Actual</th><th>Forecast</th><th>Previous</th></tr></thead><tbody>` +
+    d.calendar.map(e => `<tr><td>${esc(e.ts_utc)}</td><td>${esc(e.currency)}</td><td>${esc(e.title)}</td><td>${esc(e.actual)}</td><td>${esc(e.forecast)}</td><td>${esc(e.previous)}</td></tr>`).join("") +
+    `</tbody></table>` : `<p class="muted">No scheduled events stored. Add verified official events; do not fabricate them.</p>`;
+  $("calendar-body").insertAdjacentHTML("afterbegin",
+    `<p><span class="badge ${cls(d.calendar_status.state)}">${esc(d.calendar_status.state)}</span>
+     <span class="muted">${esc(d.calendar_status.provider)}${d.calendar_status.reason ? " · " + esc(d.calendar_status.reason) : ""}</span></p>`);
+
+  const n = d.news_status;
+  $("news-body").innerHTML = `<p><span class="badge ${cls(n.state)}">${esc(n.state)}</span>
+    <span class="muted">${esc(n.provider)}${n.reason ? " · " + esc(n.reason) : ""}${n.items !== undefined ? " · " + n.items + " item(s)" : ""}</span></p>` +
+    (d.news.length ? d.news.map(a => `<div class="report"><strong>${esc(a.headline)}</strong>
+      <div class="muted">${esc(a.source)} · published ${esc(a.published_at_utc)} · retrieved ${esc(a.retrieved_at_utc)} · ${esc(a.origin)}</div></div>`).join("") :
+      `<p class="muted">No current headlines. Nothing is shown rather than an invented story.</p>`);
+
+  $("risk-body").innerHTML = `
+    <div class="grid">
+      <div class="stat"><div class="k">Kill switch</div><div class="v">${esc(d.kill_switch)}</div></div>
+      <div class="stat"><div class="k">Open positions</div><div class="v">${d.positions.length}</div></div>
+      <div class="stat"><div class="k">Daily loss limit</div><div class="v">${esc(d.risk.limits.daily_loss_pct)}%</div></div>
+      <div class="stat"><div class="k">Weekly loss limit</div><div class="v">${esc(d.risk.limits.weekly_loss_pct)}%</div></div>
+      <div class="stat"><div class="k">Risk / trade</div><div class="v">${esc(d.risk.limits.risk_per_trade_pct)}%</div></div>
+      <div class="stat"><div class="k">Max positions</div><div class="v">${esc(d.risk.limits.max_positions)}</div></div>
+    </div>
+    <p class="muted" style="margin-top:10px">Limits are enforced independently of Claude. Arm/pause is available in Command Center.</p>`;
+
+  $("learning-body").innerHTML = `
+    ${d.reviews.length ? d.reviews.map(r => `<div class="report"><strong>Ticket ${esc(r.ticket)} — process ${esc(r.process_quality)}</strong>
+      <div class="muted">P/L ${esc(r.pnl)} · ${esc(r.variance_or_process)}</div>
+      <div>${esc(r.hypothesis)}</div><div class="muted">Next: ${esc(r.next_test)}</div></div>`).join("") :
+      `<p class="muted">No trade reviews yet.</p>`}
+    <h2 style="margin-top:14px">Experiments</h2>
+    ${d.experiments.length ? `<table><thead><tr><th>Name</th><th>Status</th><th>Metrics</th></tr></thead><tbody>` +
+      d.experiments.map(x => `<tr><td>${esc(x.name)}</td><td>${esc(x.status)}</td><td><pre>${esc(JSON.stringify(x))}</pre></td></tr>`).join("") +
+      `</tbody></table>` : `<p class="muted">No experiments.</p>`}`;
+
+  const p = d.performance;
+  $("performance-body").innerHTML = `<div class="grid">
+    <div class="stat"><div class="k">Trades</div><div class="v">${fmt(p.trades)}</div></div>
+    <div class="stat"><div class="k">Net P/L</div><div class="v">${fmt(p.net_pnl)}</div></div>
+    <div class="stat"><div class="k">Win rate</div><div class="v">${p.win_rate === null ? "—" : (p.win_rate * 100).toFixed(1) + "%"}</div></div>
+    <div class="stat"><div class="k">Expectancy</div><div class="v">${fmt(p.expectancy)}</div></div>
+    <div class="stat"><div class="k">Profit factor</div><div class="v">${fmt(p.profit_factor)}</div></div>
+  </div><p class="muted" style="margin-top:10px">${esc(p.note)}</p>`;
+
+  $("audit-body").innerHTML = d.audit.length ? `<table><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Detail</th></tr></thead><tbody>` +
+    d.audit.map(a => `<tr><td>${esc(a.ts)}</td><td>${esc(a.actor)}</td><td>${esc(a.action)}</td><td><pre>${esc(JSON.stringify(a.detail))}</pre></td></tr>`).join("") +
+    `</tbody></table>` : `<p class="muted">No audit events.</p>`;
+
+  $("limits").value = JSON.stringify(d.risk.limits, null, 2);
+}
+
+async function action(path, body, message) {
+  try {
+    const result = await api(path, {method: "POST", body: JSON.stringify(body || {})});
+    if (message) alert(message);
+    await load();
+  } catch (e) { alert(e.message); }
+}
+
+$("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    const result = await api("/api/auth/login", {
+      method: "POST", body: JSON.stringify({password: $("password").value})
+    });
+    csrf = result.csrf;
+    sessionStorage.setItem("ati_csrf", csrf);
+    $("login-error").classList.add("hide");
+    $("password").value = "";
+    await boot();
+  } catch (err) {
+    $("login-error").textContent = err.message;
+    $("login-error").classList.remove("hide");
+  }
+});
+
+$("logout").addEventListener("click", async () => {
+  try { await api("/api/auth/logout", {method: "POST", body: "{}"}); } catch (e) {}
+  sessionStorage.removeItem("ati_csrf");
+  csrf = "";
+  showLogin();
+});
+
+$("tabs").addEventListener("click", (e) => {
+  const tab = e.target.dataset.tab;
+  if (!tab) return;
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  document.querySelectorAll("[data-panel]").forEach(p => p.classList.toggle("hide", p.dataset.panel !== tab));
+});
+
+document.querySelectorAll("[data-kill]").forEach(btn => btn.addEventListener("click", async () => {
+  const actionName = btn.dataset.kill;
+  if (actionName === "pause") {
+    if (confirm("Pause new orders? Open positions remain.")) await action("/api/kill-switch", {action: "pause"});
+  } else if (actionName === "estop") {
+    if (confirm("Activate EMERGENCY STOP? New orders are blocked immediately.")) await action("/api/kill-switch", {action: "estop"});
+  } else if (actionName === "arm") {
+    const typed = prompt('Type ARM DEMO to permit demo-only autonomous execution');
+    if (typed === "ARM DEMO" && confirm("Arm demo trading? Risk limits still apply.")) {
+      await action("/api/kill-switch", {action: "arm", confirm: typed});
+    }
+  }
+}));
+
+$("refresh").addEventListener("click", load);
+$("save-limits").addEventListener("click", async () => {
+  let limits;
+  try { limits = JSON.parse($("limits").value); } catch (e) { return alert("Limits must be valid JSON"); }
+  await action("/api/settings/risk", {limits, confirm: $("settings-confirm").value},
+               "Risk limits saved and audited.");
+});
+$("reconcile").addEventListener("click", () => action("/api/reconcile", {}, "Reconciliation finished."));
+$("refresh-calendar").addEventListener("click",
+  () => action("/api/calendar/refresh", {}, "Calendar refresh attempted; the status badge shows the result."));
+$("refresh-news").addEventListener("click",
+  () => action("/api/news/refresh", {}, "Headline fetch attempted; the status badge shows the result."));
+$("audit-trades").addEventListener("click", () => action("/api/learning/audit", {}, "Trade audit finished."));
+$("run-research").addEventListener("click", async () => {
+  if (!confirm("Run all departments now? This may use Claude API tokens.")) return;
+  try {
+    const r = await api("/api/research/run", {method: "POST", body: "{}"});
+    alert("Decision: " + r.proposal.decision);
+    await load();
+  } catch (e) { alert(e.message); }
+});
+$("rotate-password").addEventListener("click", async () => {
+  if (!confirm("Rotate the owner password? Every other session is signed out.")) return;
+  try {
+    const r = await api("/api/auth/password", {method: "POST", body: JSON.stringify({
+      current_password: $("pw-current").value, new_password: $("pw-new").value})});
+    csrf = r.csrf;
+    sessionStorage.setItem("ati_csrf", csrf);
+    $("pw-current").value = "";
+    $("pw-new").value = "";
+    alert("Password rotated. Other sessions are signed out.");
+  } catch (e) { alert(e.message); }
+});
+
+boot();
+</script>
+</body>
+</html>

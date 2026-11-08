@@ -1,0 +1,9 @@
+# Demo-only trading system. Pinned for reproducibility (Python 3.11).
+fastapi==0.162.0
+uvicorn==0.53.0
+pydantic==2.14.3
+anthropic==2.6.0
+MetaTrader5==5.0.6231
+python-dotenv==1.1.1
+httpx==0.28.1
+pytest==8.4.2

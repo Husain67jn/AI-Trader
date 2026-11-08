@@ -1,0 +1,1 @@
+"""AI Trading Institution — demo-only local research and execution system."""
