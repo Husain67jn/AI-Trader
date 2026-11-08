@@ -34,6 +34,20 @@
   setting `TRADER_CALENDAR_SOURCE=forexfactory`; a configured licensed feed URL takes
   precedence. Review source terms before use. Successful, fresh ingestion is required
   before the risk engine accepts the calendar.
+- The public weekly source is **not licensed**: an undocumented public endpoint, current
+  week only, no `actual` values, not for redistribution. Every row it produces carries
+  `quality="UNOFFICIAL_PUBLIC"` and the status payload repeats that note, so it can never
+  be mistaken for a licensed feed.
+- Blackouts apply to events at or above `TRADER_EVENT_BLACKOUT_IMPACTS` (default
+  HIGH,MEDIUM) inside a symmetric window (`event_blackout_minutes`, default 30). An event
+  whose impact is unknown always blocks: an unlabelled release is not evidence of a quiet
+  market.
+- Other sources probed and rejected or deferred (2026-11-07):
+  FRED `releases/dates` (official, free key, dates without times - unusable for a
+  30-minute window), BLS (403/415 to non-browser clients, v2 needs a key), the Federal
+  Reserve's own calendar JSON (official, free, Fed-only), Fed/ECB HTML calendars
+  (fragile, terms-sensitive), Trading Economics (guest API discontinued, paid), Financial
+  Modeling Prep (key required).
 
 ## News
 - Disabled by default. No article is treated as verified fact; injected instructions in

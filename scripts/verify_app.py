@@ -158,17 +158,26 @@ def main(argv: list[str]) -> int:
             print("\n3. Broker, account and market data")
             body = client.get("/api/overview").json()
             status = body["broker_status"]
+            error = status.get("error") or {}
             check(status["real_mt5"] is True and status["simulated"] is False,
-                  "a REAL MT5 session is in use", status["label"])
+                  "a REAL MT5 session is in use",
+                  f"{status['label']}"
+                  + (f" — broker error {error.get('code')}: {error.get('message')}"
+                     if error else ""))
             check(body["account"] and body["account"]["trade_mode"] == "DEMO",
                   "the account is DEMO",
                   f"balance {body['account']['balance']} {body['account']['currency']}")
             mapping = body["symbol_resolution"]
-            check(mapping.get("EURUSD") == "EURUSDm"
-                  and mapping.get("GBPUSD") == "GBPUSDm"
-                  and mapping.get("XAUUSD") == "XAUUSDm",
-                  "every configured symbol resolved to the broker's contract",
-                  json.dumps(mapping))
+            if status["real_mt5"]:
+                check(mapping.get("EURUSD") == "EURUSDm"
+                      and mapping.get("GBPUSD") == "GBPUSDm"
+                      and mapping.get("XAUUSD") == "XAUUSDm",
+                      "every configured symbol resolved to the broker's contract",
+                      json.dumps(mapping))
+            else:
+                check(False, "every configured symbol resolved to the broker's contract",
+                      "the simulator resolves its own names, not the broker's; this is "
+                      "the same failure as the session above")
             check(bool(body["quotes"]), "market data is being processed",
                   f"{len(body['quotes'])} instruments quoted")
             check(body["data_health"] in ("HEALTHY", "CLOSED", "STALE", "DEGRADED"),

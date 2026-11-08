@@ -666,14 +666,25 @@ def main() -> int:
     print("\n8. Trade review")
     _stage_review(state_broker, tmp)
 
-    print(f"\nfinal checks")
+    print("\nfinal checks:")
     config.session_open = real_session_open
     check(fake.order_send_calls == [], "no order_send reached the package in any stage")
     check(str(config.DB_PATH).startswith(str(tmp)),
           "every row was written to the isolated database",
           str(config.DB_PATH))
-    check(real_session_open(datetime.now(UTC)) is False,
-          "the real session gate still reports the market closed at this hour")
+    # Time-independent: whatever the real gate says right now, the risk engine must agree
+    # with it. Asserting "the market is closed" only holds outside trading hours.
+    now = datetime.now(UTC)
+    open_now = real_session_open(now)
+    probe = ExecutionService(DryRunBroker(), RiskEngine()).assess(
+        _fixed_proposal(), health="HEALTHY")
+    if open_now:
+        check(probe.approved, "with the market open, the real session gate allows a trade",
+              "; ".join(probe.reasons[:2]))
+    else:
+        check(not probe.approved and any("session" in r for r in probe.reasons),
+              "with the market closed, the real session gate refuses a trade",
+              "; ".join(probe.reasons[:2]))
     passed = sum(1 for ok, _, _ in RESULTS if ok)
     print(f"\n{passed}/{len(RESULTS)} dry-run checks passed")
     for failure in BLOCKING:

@@ -145,3 +145,27 @@
 32. **Instruments are validated before use, not repaired.** `broker.instrument_issues()`
     reports a contract whose point, step, tick value or volume bounds are unusable; the
     proposal is refused rather than sized with a guess.
+
+33. **A small demo account may be unable to size a minimum-lot trade.** The risk engine
+    refuses a proposal when its budget falls below the broker minimum; it never rounds
+    volume upwards to fit a small account. Dry-run stage 3b demonstrates this with an
+    arbitrary synthetic account, independently of any local broker balance. Configure
+    account funding and risk limits deliberately when validating your own demo setup.
+
+34. **The free public calendar is not a licensed feed.** It is an undocumented public
+    weekly endpoint: current week only, no `actual` values, not for redistribution. Rows
+    are stamped `quality="UNOFFICIAL_PUBLIC"` and the provenance note travels with the
+    status. Nothing is selected by default, so an unconfigured install refuses every trade
+    rather than trading without a calendar. See [data sources](DATA_SOURCES.md).
+
+35. **`copy_rates_from_pos(..., count=100000)` is rejected by the terminal**
+    (`(-2, 'Terminal: Invalid params')`); 50,000 works (about 35 trading days of M1). The
+    desk requests 200-500 candles and logs any rejected request as `bars_unavailable`
+    rather than returning an empty series, so the ceiling is not reached in normal use.
+    `scripts/verify_market_data.py --bars` is clamped to 50,000 for this reason.
+
+36. **Session-band statistics are grouped by fixed UTC bands**, not by the broker's own
+    session table, which the MetaTrader5 package does not expose. The same heuristic is
+    used to tell a market closure from a data hole (item 28), so a broker with unusual
+    hours could have a real hole classified as a closure - reported either way, with
+    closures and issues kept separate.

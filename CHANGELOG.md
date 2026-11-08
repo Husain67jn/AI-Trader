@@ -1,5 +1,52 @@
 # Changelog
 
+## 2026-11-08 — economic calendar, spread evidence, and the final verifications
+
+Offline regression suite: **220 tests passing**.
+This round added calendar provenance, verification tools, and demo research checks.
+
+- **A working economic calendar, from a free public source.** `ForexFactoryCalendar`
+  (`app/providers.py`) reads the weekly public calendar JSON — no credential, no payment —
+  behind an explicit opt-in (`TRADER_CALENDAR_SOURCE=forexfactory`); a licensed feed URL
+  still wins. Verified live: 23 events ingested (7 High, 3 Medium, 13 Low), exchange times
+  converted from their own UTC offsets, provenance stamped `quality="UNOFFICIAL_PUBLIC"`
+  and repeated in the status note. Source research (FRED, BLS, Fed, ECB, Trading
+  Economics, FMP — probed, with the HTTP result for each) is in
+  the project data-source documentation.
+- **Blackouts now respect impact.** Any stored event used to block trading; with a real
+  feed that would have blocked most of the day (79 of 116 rows in one week were
+  Low-impact). `TRADER_EVENT_BLACKOUT_IMPACTS` (default `HIGH,MEDIUM`) sets the threshold,
+  and an event whose impact is **unknown always blocks** — nothing was loosened for
+  unlabelled data. The blackout window stays symmetric around the release
+  (`event_blackout_minutes`, default 30), covering pre- and post-event protection.
+- **Calendar refresh follows the source's own cadence** (`providers.refresh_interval_s`,
+  1 h for the weekly public calendar, 6 h for a licensed feed), so a healthy feed cannot
+  spend half of every cycle looking STALE and blocking trades. Staleness is measured
+  against the source's own window (`max_age_minutes`), and a failed refresh keeps the last
+  good snapshot until it ages out.
+- **Spread evidence, and no limit changed.** `scripts/spread_analysis.py` (read-only):
+  `(ask − bid) / point` reproduces the broker's own spread for all 8 instruments, so the
+  limits are in the right units; 20,000 M1 observations per instrument show FX p50 8–14
+  and p95 10–16 points against a limit of 30 (comfortable), while gold's median 240
+  against a limit of 60 makes XAUUSD impossible — the limit was written for a 2-digit
+  quote convention. Recommendations (FX 20–30, XAUUSD 300) are printed, not applied, since
+  raising a risk limit is the owner's decision.
+- **Four verification scripts, one command each.**
+  `scripts/verify_market_data.py` (88/88: session, ticks, candles, missing/forming bars,
+  closures vs holes, reconnect, symbol availability), `scripts/dry_run.py` (49/49: the
+  whole chain with `order_send` poisoned so it raises if reached), `scripts/verify_app.py`
+  (31/31: the running application against the real terminal, including a restart),
+  `scripts/hygiene_check.py` (secrets, ignore rules, stray files).
+- **Minimum-lot sizing is verified with an arbitrary synthetic small account.** The risk
+  engine refuses a trade when its risk budget cannot support the minimum volume, rather
+  than rounding upwards. The dry-run scenario contains no measured account values.
+- **Loose ends tidied:** the test run removes its temporary database at exit (109 leaked
+  directories had accumulated), and the dry run's session check is now time-independent
+  so it holds whether it runs during a session or outside one.
+- **Dry-run database isolation is enforced before importing application configuration.**
+  The harness selects a temporary data directory and refuses the project database.
+  Its checks verify that the fake adapter never reaches a real order submission.
+
 ## 2026-11-07 (evening) — the mission round: MT5 verified live, symbol resolution, data health, M3–M6
 
 157 → **209 tests passing**. No order sent, no paid API call, kill switch still `PAUSED`.

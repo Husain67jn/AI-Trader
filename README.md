@@ -113,8 +113,8 @@ and explicit transport configuration; see [mobile access](docs/MOBILE_DASHBOARD.
 
 Tests select temporary databases, mock broker/model services, and disable the scheduler.
 The dry-run uses a fake MT5 package and a temporary database; its `order_send` raises if
-reached. Its final session assertion currently assumes the configured market session is
-closed, so that particular check depends on when it runs.
+reached. Its final session check verifies the risk engine against the configured session
+gate whether the session is open or closed.
 
 `diagnostics.py`, `verify_market_data.py`, `verify_app.py`, and `spread_analysis.py` in
 `scripts/` can contact your configured terminal and feeds. `verify_app.py` starts a

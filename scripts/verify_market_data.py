@@ -17,9 +17,9 @@ It verifies, per instrument and for the terminal as a whole:
   * symbols the desk is not configured for are still resolvable-checked (refused)
   * the session can be dropped and re-established
 
-Exit code 0 when every check passes or is legitimately inapplicable because the market
-is closed; 1 when something is actually wrong. A closed market is reported as CLOSED,
-never as healthy and never as a failure.
+Exit code 0 when every check passes or is legitimately inapplicable; 1 when something
+is actually wrong. Old quotes outside desk hours may report CLOSED. Fresh quotes can
+report HEALTHY outside those hours, while execution still requires an open desk session.
 """
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ def verify_terminal(broker, checks: Checks) -> bool:
 
 def verify_symbol(broker, base: str, symbol: str, bars: int, checks: Checks,
                   session_open: bool) -> None:
-    from app.broker import instrument_issues, resolve_symbol, symbol_report
+    from app.broker import resolve_symbol, symbol_report
     resolved, via = resolve_symbol(broker, base)
     checks.check(resolved == symbol, f"{base}: resolves to {symbol}", f"got {resolved} ({via})")
     report = symbol_report(broker, symbol)
@@ -80,11 +80,13 @@ def verify_symbol(broker, base: str, symbol: str, bars: int, checks: Checks,
         checks.skip(f"{base}: tick freshness", "no quote to age")
     else:
         age = float(quote["age_s"])
-        if session_open:
+        if age <= FRESH_SECONDS or session_open:
+            # A fresh tick is a fresh tick whenever it happens; an old tick is only a
+            # fault when the market is supposed to be trading.
             checks.check(age <= FRESH_SECONDS, f"{base}: tick is fresh ({age:.1f}s)",
-                         f"older than {FRESH_SECONDS}s during an open session")
+                         f"older than {FRESH_SECONDS}s while the session is open")
         else:
-            # An old tick with the session shut is the market being closed, which the
+            # An old tick outside the session is the market being closed, which the
             # health gate reports as CLOSED. It is not a failure and not "healthy".
             checks.skip(f"{base}: tick freshness ({age / 3600:.1f}h old)",
                         "market closed, so freshness cannot be judged")
@@ -182,10 +184,17 @@ def main(argv: list[str]) -> int:
         print("\nData health gate")
         health, detail = data.market_health(broker)
         print(f"  {health} — {detail.get('reason', 'session open, quotes fresh')}")
-        expected = "HEALTHY" if session_open else "CLOSED"
-        checks.check(health == expected or (not session_open and health == "UNKNOWN"),
-                     f"health gate reports {expected} at this hour",
-                     f"reported {health}")
+        if getattr(broker, "kind", None) == "REAL_MT5":
+            expected = "HEALTHY" if session_open else "HEALTHY, CLOSED, or UNKNOWN"
+            checks.check(health == "HEALTHY"
+                         or (not session_open and health in ("CLOSED", "UNKNOWN")),
+                         f"health gate reports {expected} at this hour",
+                         f"reported {health}")
+        else:
+            # The simulator always quotes "now", so its verdict says nothing about the
+            # terminal. Reporting one failure with its cause beats three derived ones.
+            checks.skip("health gate verdict",
+                        "no real MT5 session to judge it against")
     finally:
         broker.disconnect()
 
@@ -198,9 +207,9 @@ def main(argv: list[str]) -> int:
         if not ok:
             print(f"  FAIL {name}: {detail}")
     if not session_open:
-        print("\nThe market is CLOSED, so tick freshness and the forming-candle check "
-              "were skipped: re-run this script during a session to complete the live "
-              "half of the verification. Nothing here waits for the market to open.")
+        print("\nThe desk session is closed. Some tick or candle checks may be inapplicable; "
+              "re-run during an open session for full live validation. "
+              "Nothing here waits for the market to open.")
     for name, ok, detail in checks.results:
         if ok and detail.startswith("SKIP"):
             print(f"  skip {name}: {detail[7:]}")

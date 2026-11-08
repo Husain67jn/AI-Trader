@@ -51,13 +51,27 @@ TRADER_ALLOW_PAID_AUTORESEARCH=
 # FRED historical series. Unset => fetch_fred_series raises MissingCredential rather
 # than returning an empty "success".
 FRED_API_KEY=
-# Economic calendar: an HTTP endpoint returning {"events": [...]} with
-# event_id/title/currency/ts_utc/impact. Times may carry an offset; they are
-# converted to UTC on ingest. Unset, never ingested, or older than 180 minutes =>
-# calendar UNAVAILABLE/STALE and every risk assessment is rejected (fail closed).
-# There is no switch that permits trading without a verified calendar.
+# Economic calendar. There is no switch that permits trading without a verified
+# calendar: unset, never ingested, or older than the source's freshness window =>
+# UNAVAILABLE/STALE and every risk assessment is rejected (fail closed).
+#
+# A licensed feed wins whenever it is configured: an HTTP endpoint returning
+# {"events": [...]} with event_id/title/currency/ts_utc/impact. Times may carry an
+# offset; they are converted to UTC on ingest.
 TRADER_CALENDAR_FEED_URL=
 TRADER_CALENDAR_API_KEY=
+# Or name a free public source explicitly (no credential, no payment):
+#   forexfactory = the free weekly public calendar (unofficial endpoint: reputable but
+#                  NOT licensed, one week of horizon, no actuals, not for redistribution;
+#                  every row is stamped quality="UNOFFICIAL_PUBLIC")
+# Nothing is selected by default, so a fresh install keeps refusing to trade until the
+# operator chooses a source deliberately.
+TRADER_CALENDAR_SOURCE=
+# Which event impacts may black out trading, before and after the release, inside
+# event_blackout_minutes. Default HIGH,MEDIUM. An event whose impact is unknown always
+# blacks out regardless of this setting: an unlabelled release is not evidence of a
+# quiet market.
+TRADER_EVENT_BLACKOUT_IMPACTS=
 # News: an HTTP endpoint returning {"articles": [...]} with
 # headline/source/published_at (optional url). Headlines are stored, deduplicated,
 # and only shown while younger than 24 h. Unset => news UNAVAILABLE.

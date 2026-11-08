@@ -87,3 +87,12 @@ CLAUDE.local.md
 Thumbs.db
 Desktop.ini
 node_modules/
+# Generated session reports can contain local paths, account facts, and runtime output.
+/ECONOMIC_CALENDAR_REPORT.md
+/EXECUTION_DRY_RUN_REPORT.md
+/FINAL_COMPLETION_REPORT.md
+/FINAL_TEST_RESULTS.md
+/FINAL_USER_GUIDE.md
+/MARKET_DATA_VERIFICATION.md
+/REMAINING_EXTERNAL_DEPENDENCIES.md
+/SPREAD_ANALYSIS.md
